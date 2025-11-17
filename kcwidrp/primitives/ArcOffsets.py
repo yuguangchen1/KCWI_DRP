@@ -43,6 +43,8 @@ class ArcOffsets(BasePrimitive):
         nbars = self.config.instrument.NBARS
         tkalpha = self.config.instrument.TUKEYALPHA
         self.logger.info("Using Tukey Alpha value of %.2f" % tkalpha)
+        linecrop = self.config.instrument.LINECROP
+        self.looger.info("Using linecrop value of %d" % linecrop)
         arcs = self.context.arcs
         if arcs is not None:
             # Do we plot?
@@ -50,6 +52,8 @@ class ArcOffsets(BasePrimitive):
             plab = plotlabel(self.action.args)
             # Compare with reference arc
             reference_arc = arcs[self.config.instrument.REFBAR][:]
+            # Set threshold on arc strength
+            reference_arc[reference_arc > linecrop] = linecrop
             tkwgt = signal.windows.tukey(len(reference_arc), alpha=tkalpha)
             reference_arc *= tkwgt
             # number of cross-correlation samples (avoiding ends)
@@ -60,6 +64,8 @@ class ArcOffsets(BasePrimitive):
             offsets = []
             next_bar_to_plot = 0
             for arc_number, arc in enumerate(arcs):
+                # set threshold on arc strength
+                arc[arc > linecrop] = linecrop
                 arc *= tkwgt
                 # Cross-correlate, avoiding junk on the ends
                 cross_correlation = np.correlate(reference_arc[10:-10],
