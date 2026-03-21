@@ -45,6 +45,10 @@ class SubtractScatteredLight(BasePrimitive):
         elif self.config.instrument.skipscat:
             self.logger.info("Skipping scattered light subtraction by request")
             self.action.args.ccddata.header[key] = (False, keycom)
+        elif self.action.args['imtype'] in ['FLATLAMP', 'DOMEFLAT', 'TWIFLAT']:
+            # skip if flat
+            self.logger.info("Skipping scattered light subtraction for flats")
+            self.action.args.ccddata.header[key] = (False, keycom)
         else:
             # Binning
             # ybin = self.action.args.ybinsize
