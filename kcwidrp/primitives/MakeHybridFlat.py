@@ -278,6 +278,9 @@ class MakeHybridFlat(BaseImg):
                                 ky=1,
                                 return_spline=True
                             )
+                    
+                        clip_mask = np.abs(img_tmp - img_div) < nsig * np.nanstd(img_tmp)
+
                         
                     # regenerate map
                     recover_mask = (slicemap == islice)
@@ -317,6 +320,7 @@ class MakeHybridFlat(BaseImg):
                 # create hybrid image
                 img_div_fit[~np.isfinite(img_div_fit)] = 1
                 img_twin = img_flat * img_div_fit
+                img_twin[img_flat == 1] = 1
 
                 ccd_twin = ccd_flat.copy()
                 ccd_twin.data = img_twin
@@ -435,6 +439,7 @@ class MakeHybridFlat(BaseImg):
                 # create hybrid image
                 img_div_fit[~np.isfinite(img_div_fit)] = 1
                 img_twdo = img_dome * img_div_fit
+                img_twdo[img_dome == 1] = 1
 
                 ccd_twdo = ccd_dome.copy()
                 ccd_twdo.data = img_twdo
