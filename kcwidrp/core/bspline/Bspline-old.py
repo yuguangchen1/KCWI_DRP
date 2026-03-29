@@ -10,8 +10,6 @@ from . import PydlutilsUserWarning
 from .math import djs_reject, flegendre
 from .trace import fchebyshev
 from .uniq import uniq
-from astropy.io import ascii
-from astropy.table import Table
 
 
 class Bspline(object):
@@ -201,9 +199,6 @@ class Bspline(object):
         else:
             yfit, foo = self.value(xdata, x2=x2, action=a1, upper=upper,
                                    lower=lower)
-            # print(errb[0])
-            # print(len(errb))
-            # print(len(errb[0]))
             return self.maskpoints(errb[0]), yfit
         sol = cholesky_solve(a, beta)
         if self.coeff.ndim == 2:
@@ -433,21 +428,24 @@ class Bspline(object):
         mask.
         """
         nbkpt = self.mask.sum()
+        goodbkpt = np.where(self.mask)[0]
+        nbkpt = len(goodbkpt)
         if nbkpt <= 2*self.nord:
             return -2
-        hmm = err[np.unique(err/self.npoly)]/self.npoly
+        hmm = err[uniq(err//self.npoly)]//self.npoly
         n = nbkpt - self.nord
         if np.any(hmm >= n):
             return -2
         test = np.zeros(nbkpt, dtype='bool')
-        for jj in range(-np.ceil(self.nord/2.0), int(self.nord/2.0)):
+        for jj in range(-int(np.ceil(self.nord/2)), int(self.nord/2.)):
             foo = np.where((hmm+jj) > 0, hmm+jj, np.zeros(hmm.shape,
                                                           dtype=hmm.dtype))
             inside = np.where((foo+self.nord) < n-1, foo+self.nord,
                               np.zeros(hmm.shape, dtype=hmm.dtype)+n-1)
-            test[inside] = True
+            if len(inside) > 0:
+                test[inside] = True
         if test.any():
-            reality = self.mask[test]
+            reality = goodbkpt[test]
             if self.mask[reality].any():
                 self.mask[reality] = False
                 return -1
@@ -643,7 +641,7 @@ def cholesky_solve(a, bb):
 
 
 def iterfit(xdata, ydata, invvar=None, upper=5, lower=5, x2=None,
-            maxiter=4, nord=4, bkpt=None, fullbkpt=None,
+            maxiter=10, nord=4, bkpt=None, fullbkpt=None,
             kwargs_bspline={}, kwargs_reject={}):
     """Iteratively fit a B-spline set to data, with rejection.
 
@@ -735,12 +733,6 @@ def iterfit(xdata, ydata, invvar=None, upper=5, lower=5, x2=None,
     xwork = xdata[xsort]
     ywork = ydata[xsort]
     invwork = invvar[xsort]
-    # invwork = invvar[xsort]*0 + (1/np.var(ywork[((xwork < 5190) | (xwork > 5205)) & ((xwork < 5570) | (xwork > 5585))]))
-
-
-
-
-
     if x2 is not None:
         x2work = x2[xsort]
     else:
@@ -749,37 +741,6 @@ def iterfit(xdata, ydata, invvar=None, upper=5, lower=5, x2=None,
     error = 0
     qdone = False
     while (error != 0 or qdone is False) and iiter <= maxiter:
-        # print('xwork')
-        # print(xwork)
-        # for i in range(len(fullbkpt)-1):
-        #     # print(fullbkpt[i], fullbkpt[i+1])
-        #     # range = np.max(xwork)/30
-        #     if len(ywork[(maskwork==True) & (xwork > fullbkpt[i]) & (xwork < fullbkpt[i+1])]) == 0:
-        #         print(f'{fullbkpt[i]} failed')
-        #         continue
-        #     testvar = np.var(ywork[(maskwork==True) & (xwork > fullbkpt[i]) & (xwork < fullbkpt[i+1])])
-        #     invwork[(xwork > fullbkpt[i]) & (xwork < fullbkpt[i+1])] = 1/testvar
-        bk = 50
-        # print(bk)
-        arr = np.linspace(np.min(xwork), np.max(xwork), bk)
-        range = (np.max(xwork) - np.min(xwork))/(bk-1)
-        for i in arr:
-            # print(np.min(xwork), np.max(xwork))
-
-            testvar = np.var(ywork[(maskwork==True) & (xwork >= i) & (xwork < i+range)])
-            # if len(invwork[(xwork >= i) & (xwork < i+range)]) < 50:
-            #
-            #     print(len(invwork[(xwork > i) & (xwork < i+range)]))
-            # if (testvar == 0) or (testvar == np.inf) or (testvar == np.nan):
-            #     testvar = np.var(ywork[(maskwork==True) & (xwork > i-range) & (xwork < i)])
-            # print(testvar, 1/testvar)
-            if ~np.isfinite((1/testvar)):
-                # print(testvar, 1/testvar)
-                continue
-                # testvar = np.var(ywork[(maskwork==True) & (xwork >= i-range) & (xwork < i)])
-                # print(f'New testvar: {testvar}')
-            invwork[(xwork > i) & (xwork < i+range)] = 1/testvar
-
         goodbk = sset.mask.nonzero()[0]
         if maskwork.sum() <= 1 or not sset.mask.any():
             sset.coeff = 0
@@ -800,57 +761,18 @@ def iterfit(xdata, ydata, invvar=None, upper=5, lower=5, x2=None,
                         ct = 0
                     else:
                         sset.mask[goodbk[ileft]] = False
-
-            # print(invwork*maskwork)
-            # print(len(invwork*maskwork))
             error, yfit = sset.fit(xwork, ywork, invwork*maskwork,
                                    x2=x2work)
-            # print(f'yfit length: {len(yfit)}')
-            # print('yfit')
-            # print(yfit)
-        print(f'Iteration: {iiter+1}')
         iiter += 1
         inmask = maskwork
-        # print(inmask)
-        # inmask[((xwork > 5197) & (xwork < 5201)) | ((xwork > 5574) & (xwork < 5581))] = False
-        # print(np.std(ywork[((xwork < 5190) | (xwork > 5205)) & ((xwork < 5570) | (xwork > 5585))]))
-        # inv1/np.var(ywork[((xwork < 5197) | (xwork > 5201)) & ((xwork < 5574) | (xwork > 5581))])
         if error == -2:
 
             return sset, outmask
         elif error == 0:
-            # v_test = (invwork*0) + np.var(yworktest)
-            # v_test[maskwork == False] = np.nan #np.nan
-            # yworktest = ywork[((xwork < 5197) & (xwork > 5201)) | ((xwork > 5574) & (xwork < 5581))]
-
-
-
-            # v_test = (invwork*0) + np.var(yworktest)
-            # print(np.std(ywork))
-            # iv_test = 1/v_test
             maskwork, qdone = djs_reject(ywork, yfit, invvar=invwork,
                                          inmask=inmask, outmask=maskwork,
-                                         upper=upper, lower=lower, sticky=True,
+                                         upper=upper, lower=lower,
                                          **kwargs_reject)
-            # print(f'Iteration: {iiter}')
-            # print(f'maskwork length: {len(maskwork)}')
-            # print('maskwork:')
-            # print(f'# True: {len(maskwork[maskwork==True])}')
-            # print(f'# False: {len(maskwork[maskwork==False])}')
-            # print(f'Writing Mask {iiter}')
-            # data = Table()
-            # data['xwork'] = xwork
-            # data['ywork'] = ywork
-            # data['yfit'] = yfit
-            # data['invvar'] = invwork
-            # data['mask'] = maskwork
-
-            #recompute invwork
-            invwork = (invwork*0.) + 1/np.var(ywork[maskwork==True])
-            # print(f'Invwork: {np.median(invwork):.3e}')
-
-            # ascii.write(data, f'kb210415_00042_maskwork_{iiter}.txt', format = 'basic', overwrite=True)
-
         else:
             pass
     outmask[xsort] = maskwork

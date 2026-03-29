@@ -142,7 +142,7 @@ class SubtractSky(BasePrimitive):
                                     % (obtime, sktime))
                 skscl = 1.
             else:
-                skscl = obtime / sktime
+                skscl = 1 #obtime / sktime
             self.logger.info("Sky scale factor = %.3f" % skscl)
 
             # store un-sky-subtracted image

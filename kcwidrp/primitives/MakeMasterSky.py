@@ -541,8 +541,15 @@ class MakeMasterSky(BaseImg):
                          (n, np.min(bkpt), np.max(bkpt)))
 
         # do bspline fit
-        sft0, gmask = Bspline.iterfit(waves, fluxes, fullbkpt=bkpt,
-                                      upper=1, lower=1)
+
+        if self.config.instrument.skysigclip:
+            sft0, gmask = Bspline.iterfit(waves, fluxes, fullbkpt=bkpt,
+                                          upper=1, lower=1)
+        else:
+            print('Not clipping sky')
+            sft0, gmask = Bspline.iterfit(waves, fluxes, fullbkpt=bkpt,
+                                          upper=1, lower=1, maxiter=0)
+
         gp = [i for i, v in enumerate(gmask) if v]
         yfit1, _ = sft0.value(waves)
         self.logger.info("Number of good points = %d" % len(gp))
