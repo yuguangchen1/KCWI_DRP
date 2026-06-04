@@ -14,6 +14,7 @@ import numpy as np
 from scipy.signal.windows import boxcar
 import scipy as sp
 from scipy.signal import find_peaks
+from astropy.io import fits
 
 
 def bm_ledge_position(cwave, dich):
@@ -930,7 +931,22 @@ class MakeMasterFlat(BaseImg):
         stacked.header['SLIMAPF'] = slf
         stacked.header['POSMAPF'] = pof
 
-        # store flat in output frame
+        # # store flat in output frame
+        # mdome = fits.open('/Users/nik/Documents/Martijn/obs/2025sep21/mdome.fits')[0].data
+        #
+        # mdome_nik = 1/mdome
+        # mdome_nik[wavemap.data < wavegood0] = 0.01
+        # mdome_nik[wavemap.data > wavegood1] = 0.01
+        #
+        # # trim the high points near edges of slice
+        # qq = [i for i, v in enumerate(mdome_nik.flat) if v >= 3. and
+        #       (posmap.data.flat[i] <= 4/xbin or
+        #        posmap.data.flat[i] >= 136/xbin)]
+        # if len(qq) > 0:
+        #     mdome_nik.flat[qq] = 0.0
+        #
+        # stacked.header['NIKDOME'] = True
+        # stacked.data = mdome_nik #ratio #mdome_nik
         stacked.data = ratio
 
         # output master flat
